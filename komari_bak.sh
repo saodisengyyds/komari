@@ -23,6 +23,11 @@ GH_PAT="${GH_PAT:-your_github_personal_access_token}"
 GH_EMAIL="${GH_EMAIL:-your_github_email@example.com}"
 
 #---------------------------------------------------------------
+# 备份相关配置
+#---------------------------------------------------------------
+BACKUP_DAYS="${BACKUP_DAYS:-10}"  # 保留最近 N 天的备份文件
+
+#---------------------------------------------------------------
 # 面板工作目录配置 (与 Dockerfile 中 Komari 的工作路径保持一致)
 #---------------------------------------------------------------
 WORK_DIR="/app"
@@ -55,7 +60,7 @@ do_backup() {
         error "克隆 GitHub 仓库失败。请检查 GH_PAT 或网络连接。"
     fi
 
-    TIME=$(TZ="Asia/Shanghai" date "+%Y-%m-%d-%H%M%S")
+    TIME=$(date -u "+%Y-%m-%d-%H%M%S")
     BACKUP_FILE="komari-$TIME.tar.gz"
     
     hint "正在压缩数据目录: $DATA_DIR"
@@ -68,8 +73,16 @@ do_backup() {
 
     cd "$BACKUP_TEMP_DIR" || error "进入临时仓库目录失败。"
     
-    hint "正在清理旧备份，保留最新的 5 个..."
-    find ./ -name 'komari-*.tar.gz' | sort | head -n -5 | xargs -r rm -f
+    hint "正在清理旧备份，保留最近 $BACKUP_DAYS 天的数据..."
+    # 根据文件名中的时间戳判断文件年龄，删除超过 BACKUP_DAYS 天的备份
+    # 使用 UTC 时间计算截止日期
+    CUTOFF_DATE=$(date -u -d "$BACKUP_DAYS days ago" "+%Y-%m-%d" 2>/dev/null || date -u -v-${BACKUP_DAYS}d "+%Y-%m-%d")
+    find ./ -name 'komari-*.tar.gz' -type f | while read file; do
+        FILE_DATE=$(echo "$file" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | head -1)
+        if [ "$FILE_DATE" \< "$CUTOFF_DATE" ]; then
+            rm -f "$file"
+        fi
+    done
     
     # 记录最新的备份文件名
     echo "$BACKUP_FILE" > README.md

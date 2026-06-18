@@ -7,8 +7,10 @@ services:
     restart: unless-stopped
     ports:
       - "25774:25774"
+      # Caddy 反代服务端口（设置了 UUID 时启用）
+      - "8888:8888"
     environment:
-      # 备份相关环境变量
+      # 备份相关环境变量（必需）
       - GH_BACKUP_USER=your_github_username
       - GH_REPO=your_private_repo_name
       - GH_PAT=your_github_personal_access_token
@@ -16,9 +18,18 @@ services:
       # 登录鉴权变量
       - ADMIN_USERNAME=yourusername
       - ADMIN_PASSWORD=yourpassword
+      # 备份时间和保留天数配置（可选）
+      # - BACKUP_TIME=0 20 * * *  # Cron 表达式，默认 UTC 20:00 (北京时间 04:00)
+      # - BACKUP_DAYS=10  # 保留备份文件的天数，默认 10
+      # VLESS 和 VMESS 节点订阅（可选，设置后启动 Caddy 反代）
+      # - UUID=your-uuid-here
+      # - ARGO_DOMAIN=your-domain.com  # 可选，不设置时自动使用公网IP
+      # - CF_IP=your-cf-ip
+      # - SUB_NAME=komari  # 订阅名称，默认为 komari
+      # - CADDY_PROXY_PORT=8888  # Caddy 反代端口，默认 8888（如未设置 ARGO_DOMAIN 需暴露）
       # 可选argo变量
-      # - KOMARI_ENABLE_CLOUDFLARED=true
-      # - KOMARI_CLOUDFLARED_TOKEN=eyJxxxxx
+      # - KOMARI_ENABLE_CLOUDFLARED=true
+      # - KOMARI_CLOUDFLARED_TOKEN=eyJxxxxx
     volumes:
       - ./komari-data:/app/data
     logging:
